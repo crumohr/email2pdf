@@ -1,0 +1,31 @@
+[[source]]
+
+url = "https://pypi.python.org/simple"
+verify_ssl = true
+name = "pypi"
+
+
+[packages]
+
+reportlab = "*"
+requests = "*"
+"pypdf2" = "*"
+"beautifulsoup4" = "*"
+python-magic = "*"
+"html5lib" = "*"
+
+
+[dev-packages]
+
+"flake8" = "*"
+freezegun = "*"
+nose = "*"
+"pdfminer3k" = "*"
+pipreqs = "*"
+pylint = "*"
+coverage = "*"
+
+
+[requires]
+
+python_version = "3.6"
