@@ -1,9 +1,13 @@
-FROM ubuntu:14.04
-MAINTAINER Andrew Ferrier <andrew.ferrier@example.com>
-RUN apt-get update && apt-get install -y git build-essential \
-        checkinstall \
+FROM phusion/baseimage:latest
+
+ARG DEBIAN_FRONTEND=noninteractive
+ARG BUILD_PACKAGES='git build-essential fakeroot checkinstall gdebi-core wget'
+WORKDIR /tmp
+COPY . /tmp/email2pdf/
+RUN useradd -ms /bin/bash email2pdf && mkdir /var/email2pdf && chmod a+rw /var/email2pdf
+RUN apt-get update && apt-get install -y $BUILD_PACKAGES \
+        sudo \
         fontconfig \
-        gdebi-core \
         getmail4 \
         libfontconfig1 \
         libfreetype6 \
@@ -12,22 +16,31 @@ RUN apt-get update && apt-get install -y git build-essential \
         libxext6 \
         libxrender1 \
         python \
+        python3-bs4 \
+        python3-html5lib \
+        python3-magic \
+        python3-requests \
         python3-dateutil \
         python3-flake8 \
         python3-pip \
         python3-reportlab \
-        wget \
+        python3-pypdf2 \
+        python3-freezegun \
         xfonts-75dpi \
-        xfonts-base
-WORKDIR /tmp
-RUN wget http://mirrors.kernel.org/ubuntu/pool/universe/p/pypdf2/python3-pypdf2_1.23+git20141008-1_all.deb
-RUN wget http://mirrors.kernel.org/ubuntu/pool/universe/f/freezegun/python3-freezegun_0.1.18-1_all.deb
-RUN fakeroot checkinstall --pkgname=python3-pdfminer3k --pkgversion=0.1 -y --fstrans=no --install=no pip3 install pdfminer3k
-RUN wget -O wkhtmltox.deb 'http://download.gna.org/wkhtmltopdf/0.12/0.12.2.1/wkhtmltox-0.12.2.1_linux-trusty-amd64.deb'
-RUN dpkg -i *.deb
-RUN wget -O /etc/vim/vimrc.local https://raw.githubusercontent.com/tpope/vim-sensible/master/plugin/sensible.vim
-COPY . /tmp/email2pdf/
-COPY docker/email2pdf/getmail /etc/cron.d/
-WORKDIR /tmp/email2pdf
-RUN make builddeb_real && sh -c 'ls -1 /tmp/email2pdf/*.deb | xargs -L 1 gdebi -n' && cp /tmp/email2pdf/*.deb /tmp
-RUN apt-get clean && rm -rf /var/lib/apt/lists/* /var/tmp/*
+        xfonts-base && \
+    wget -q -O wkhtmltox.tar.xz https://github.com/wkhtmltopdf/wkhtmltopdf/releases/download/0.12.4/wkhtmltox-0.12.4_linux-generic-amd64.tar.xz && \
+    fakeroot checkinstall --pkgname=wkhtmltox --pkgversion=0.12.4 -y --fstrans=no --install=no tar --xz -xvf wkhtmltox.tar.xz --strip-components=1 -C / && \
+    fakeroot checkinstall --pkgname=python3-pdfminer3k --pkgversion=0.1 -y --fstrans=no --install=no pip3 install pdfminer3k && \
+    dpkg -i *.deb && rm *.xz && rm *.deb && \
+    make determineversion builddeb_real && dpkg -i *.deb && \
+    ln -s /usr/share/fonts /usr/lib/x86_64-linux-gnu/fonts && \
+    apt-get remove --purge -y $BUILD_PACKAGES && apt-get -y autoremove && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+USER email2pdf
+RUN mkdir /home/email2pdf/.getmail
+COPY getmailrc /home/email2pdf/.getmail/getmailrc
+
+ENV QT_QPA_PLATFORM=offscreen
+WORKDIR /var/email2pdf
+CMD ["/sbin/my_init"]
